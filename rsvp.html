@@ -4,12 +4,14 @@ layout: default
 show_footer: false
 ---
 
+<section class="container content-section text-center">
+  
 <style type="text/css" media="screen">
-  .container {
+  /*.container {
     margin: 10px auto;
     max-width: 600px;
     text-align: center;
-  }
+  }*/
   h1 {
     margin: 30px 0;
     font-size: 4em;
@@ -17,7 +19,6 @@ show_footer: false
     letter-spacing: -1px;
   }
 </style>
-<div class="container">
   <h1>RSVP</h1>
 <form id="fs-frm" name="basic-rsvp-form" accept-charset="utf-8" action="https://formspree.io/f/xvgoogwr" method="post">
   <fieldset id="fs-frm-inputs">
@@ -25,7 +26,7 @@ show_footer: false
     <input type="text" name="name" id="full-name-1" placeholder="First and Last" required="">
     <input type="text" name="name" id="full-name-2" placeholder="First and Last" >
 
-    <label for="attending">Will you Attend?</label>
+    <label for="attending">Will you attend?</label>
     <select name="attending" id="attending" required="">
         <option value="" selected="" disabled="">Select</option>
         <option value="Yes">Excited to be part of the magic!</option>
@@ -45,7 +46,7 @@ show_footer: false
   </fieldset>
   <input type="submit" value="RSVP">
 </form>
-</div>
+
 <style>
 #fs-frm input,
 #fs-frm select,
@@ -154,3 +155,4 @@ show_footer: false
   margin-right: 3%;
 }
 </style>
+</section>
