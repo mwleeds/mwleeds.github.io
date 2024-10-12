@@ -1,11 +1,11 @@
-hero_image: assets/img/flowers.jpg
+hero_image: assets/img/yale-creek-ranch-sign.jpg
 hero_position: center center
 # mobile_hero_image: assets/img/bell.jpg
 # mobile_hero_position: center center
 
 theme:
   # text_color: '#404040'
-  primary_color: '#d98560'
+  primary_color: '#94FF96D4'
   # secondary_color: '#a2a183'
   # accent_color: '#afa63d'
   # background_color: '#ffff'

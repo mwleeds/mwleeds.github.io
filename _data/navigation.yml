@@ -1,16 +1,14 @@
-- name: Our Story
-  link: /#ourstory
-- name: Celebrations
-  link: /celebrations
-- name: Details
-  link: /details
+- name: Venue
+  link: /venue
+- name: Schedule
+  link: /schedule
+- name: Lodging
+  link: /lodging
+- name: RSVP
+  link: /rsvp
 - name: FAQ
   link: /faq
-- name: City Guide
-  link: /guide
 - name: Registry
   link: /registry
 - name: Photos
   link: /photo-gallery
-- name: RSVP
-  link: /rsvp

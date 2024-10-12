@@ -1,15 +1,15 @@
 <!-- Intro Header -->
 <header class="intro">
-    <div class="intro-body">
+    <div class="intro-body" style="vertical-align: bottom;">
         <div class="container-fluid">
             <div class="row justify-content-center">
-                <div class="col-md-10">
-                    <h1 class="brand-heading">Phaedrus & Kyle's Wedding Festival</h1>
+                <div class="col-md-10" style="text-shadow: 6px 6px 16px black;">
+                    <h1 class="brand-heading">Phaedrus & Kyle's</h1>
+                    <h1 class="brand-heading">Wedding Festival</h1>
                     <p class="intro-text">
-                        {% assign main_event = site.data.events | where: "main_event", true | first %}
-                        {{ main_event.date | date: '%B %d, %Y' }}
+                        May 24th &amp; 25th, 2025
                         <br>
-                        {{ main_event.location.city }}, {{ main_event.location.long_state }}
+                        Jacksonville, Oregon
                       <br>
                     </p>
                 </div>
