@@ -1,0 +1,56 @@
+.banner-container {
+    position: fixed;
+    top: 45px;
+    left: 0;
+    right: 0;
+    margin: 0 20px;
+    display: flex;
+    flex-direction: column;
+    z-index: 999;
+
+    .banner {
+        display: flex;
+        justify-content: space-between;
+        flex-direction: row-reverse;
+        align-items: stretch;
+        background-color: var(--accent-color);
+        margin-top: 20px;
+        color: var(--accent-text-color);
+        border-radius: 10px;
+        min-height: 80px;
+
+        a {
+            color: var(--accent-text-color);
+            font-weight: bolder;
+        }
+
+        .close-button {
+            top: 0;
+            right: 0;
+            padding: 10px;
+
+            button.btn-close {
+                color: var(--accent-text-color);
+            }
+        }
+
+        &.hidden {
+            transition: all 1s;
+            opacity: 0;
+        }
+
+        &.closed {
+            display: none;
+        }
+
+        .banner-content {
+            margin: 10px 0 10px 20px;
+            display: flex;
+            align-items: center;
+
+            p {
+                margin: 0;
+            }
+        }
+    }
+}
