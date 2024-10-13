@@ -10,5 +10,5 @@
   link: /faq
 - name: Registry
   link: /registry
-- name: Photos
-  link: /photo-gallery
+#- name: Photos
+#  link: /photo-gallery
