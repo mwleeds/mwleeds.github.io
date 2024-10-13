@@ -2,5 +2,5 @@
 order: 0
 ---
 
-We’re getting married Memorial Day Weekend and we’d love to have you there. Head to the “<a href="/rsvp.html">RSVP</a>” tab to let us know if you can join us.
+We’re getting married on Memorial Day Weekend and we’d love to have you there. Please <a href="/rsvp.html">let us know</a> by February 1st if you can join us.
 
