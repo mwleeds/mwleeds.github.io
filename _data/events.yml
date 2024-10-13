@@ -1,25 +1,24 @@
-- name: Wedding Shower
-  date: Thursday, May 26, 2016
-  time: 7pm
-  attire: Casual
-  description: We have decided to not have a gender-specific wedding shower, but instead have an inclusive pre-wedding party for all guests and family members to celebrate our upcoming nuptials. Join us for our brunch shower to help us get our wedding season started! Parking will be plentiful at the restaurant. If you are interested in bringing a gift, our registries are linked on the site!
+- name:
+  date: 2025-05-24 16:00:00 -07:00
+  attire: Casual or festival
+  description: Plan to arrive by 4 PM for an afternoon gathering with performances, interactive art, and lots of surprises. In the evening, look forward to a hearty buffet dinner and toasts, followed by a party. Pace yourself!
   transportation:
   location:
-    address: 640 Pansy Hill Rd
-    city: Harriman
-    state: TN
-    long_state: Tennessee
-    zip: 37748
-    coordinates: 41.911652,-87.641253
-    google_maps_url: https://www.google.com/maps/place/St+Michael+in+Old+Town/@41.912635,-87.6408956,15z/data=!4m2!3m1!1s0x0:0xe227f2c7eb743c04
-    venue_name:
+    address: 724 Yale Creek Rd
+    city: Jacksonville
+    state: OR
+    long_state: Oregon
+    zip: 97530
+    coordinates: 42.142104438, -122.96206553
+    google_maps_url: https://www.google.com/maps/place/724+Yale+Creek+Rd,+Jacksonville,+OR+97530/@42.1421353,-122.9627026,19z/
+    venue_name: Yale Creek Ranch
 
-- name: Wedding Ceremony
+- name:
   main_event: true
   date: 2025-05-25 10:00:00 −07:00
   endDate: 2025-05-25 12:00:00 -07:00
-  attire: resort/festival casual
-  description: Our wedding ceremony will be the perfect blend of our separate Catholic and Baptist traditions. Please arrive at least 10 minutes prior to the start of the ceremony in order to find your seat. There will be a parking attendant on site to direct you, and the venue will also provide transportation to the ceremony site if needed. We ask that you please ensure that your cell phones are off and out of sight for the duration of the ceremony.
+  attire: resort casual to dressy
+  description: Please arrive at 10 am for snacks and coffee. The ceremony will be at 11, and a delicious catered brunch will follow at 12. Plan to stay for afternoon activities (and cake!).
   transportation:
   shuttle:
   location:
@@ -33,16 +32,3 @@
     venue_name:
   calendar_description: We can't wait to see you on the day of the wedding. For any questions or issues, contact either groom.
 
-- name: Reception
-  date_alt: Immediately following the ceremony
-  attire: snappy casual
-  description: The wedding reception is at the same venue as the ceremony and will commence directly after the ceremony ends. Venue staff will direct you to the reception space. Dinner will be provided and make sure to bring your dancing shoes!
-  location:
-    address: 640 Pansy Hill Rd
-    city: Harriman
-    state: TN
-    long_state: Tennessee
-    zip: 37748
-    coordinates: 41.911652,-87.641253
-    google_maps_url: https://www.google.com/maps/place/St+Michael+in+Old+Town/@41.912635,-87.6408956,15z/data=!4m2!3m1!1s0x0:0xe227f2c7eb743c04
-    venue_name:
