@@ -1,5 +1,5 @@
 - name:
-  date: 2025-05-24 16:00:00 -07:00
+  date: 2026-05-23 16:00:00 -07:00
   attire: Casual or festival
   description: Plan to arrive by 4 PM for an afternoon gathering with performances, interactive art, and lots of surprises. In the evening, look forward to a hearty buffet dinner and toasts, followed by a party. Pace yourself!
   transportation:
@@ -15,8 +15,8 @@
 
 - name:
   main_event: true
-  date: 2025-05-25 10:00:00 −07:00
-  endDate: 2025-05-25 12:00:00 -07:00
+  date: 2026-05-24 10:00:00 −07:00
+  endDate: 2026-05-24 12:00:00 -07:00
   attire: resort casual to dressy
   description: Please arrive at 10 am for snacks and coffee. The ceremony will be at 11, and a delicious catered brunch will follow at 12. Plan to stay for afternoon activities (and cake!).
   transportation:
