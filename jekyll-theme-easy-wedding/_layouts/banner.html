@@ -1,9 +1,11 @@
 {% if page.hide != true %}
-    <div class="banner d-flex justify-content-center align-items-center row col-md-12" id="{{page.id}}-banner">
-            
-        <div class="banner-content flex-grow-1 text-center mx-auto row col-md-12">
-          {{content}}
-        </div>    
+    <div class="banner" id="{{page.id}}-banner">
+        <div class="close-button">
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="banner-content">
+            {{content}}
+        </div>
     </div>
 
     <script>
