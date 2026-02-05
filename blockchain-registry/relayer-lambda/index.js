@@ -1,0 +1,328 @@
+/**
+ * AWS Lambda function for Wedding Registry relayer
+ *
+ * This function acts as a gasless relayer that:
+ * 1. Accepts purchase requests from guests
+ * 2. Encrypts purchaser names with owner's public key
+ * 3. Submits transactions to Base L2 on behalf of guests
+ *
+ * Environment variables required:
+ *   - RELAYER_PRIVATE_KEY: Private key of the wallet that pays gas
+ *   - CONTRACT_ADDRESS: Deployed WeddingRegistry contract address
+ *   - OWNER_PUBLIC_KEY: Owner's Ethereum public key for encryption
+ *   - BASE_RPC_URL: Base L2 RPC endpoint (default: https://mainnet.base.org)
+ *   - REGISTRY_PASSWORD: Password shared with wedding guests
+ */
+
+const { ethers } = require('ethers');
+const eccrypto = require('eccrypto');
+
+// Contract ABI - only the functions we need
+const CONTRACT_ABI = [
+  'function markAsPurchased(uint256 itemId, string encryptedPurchaserName)',
+  'function getItem(uint256 itemId) view returns (tuple(string name, string description, string url, string imageUrl, bool isPurchased, string encryptedPurchaserName, uint256 purchasedAt))',
+  'function getAllItems() view returns (tuple(string name, string description, string url, string imageUrl, bool isPurchased, string encryptedPurchaserName, uint256 purchasedAt)[])'
+];
+
+// Initialize provider and contract (reused across invocations)
+let provider;
+let contract;
+let relayerWallet;
+
+function initializeContract() {
+  if (!provider) {
+    const rpcUrl = process.env.BASE_RPC_URL || 'https://mainnet.base.org';
+    provider = new ethers.JsonRpcProvider(rpcUrl);
+
+    relayerWallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY, provider);
+
+    contract = new ethers.Contract(
+      process.env.CONTRACT_ADDRESS,
+      CONTRACT_ABI,
+      relayerWallet
+    );
+  }
+  return contract;
+}
+
+/**
+ * Encrypt purchaser name using owner's public key (ECIES)
+ */
+async function encryptPurchaserName(publicKey, name) {
+  try {
+    console.log('Encrypting with public key:', publicKey.substring(0, 20) + '...');
+
+    // eccrypto expects public key as Buffer with 0x04 prefix (uncompressed)
+    let cleanPublicKey = publicKey.startsWith('0x') ? publicKey.slice(2) : publicKey;
+
+    // Ensure it starts with 04 (uncompressed key indicator)
+    if (!cleanPublicKey.startsWith('04')) {
+      cleanPublicKey = '04' + cleanPublicKey;
+    }
+
+    const publicKeyBuffer = Buffer.from(cleanPublicKey, 'hex');
+    const messageBuffer = Buffer.from(name, 'utf8');
+
+    console.log('Public key buffer length:', publicKeyBuffer.length);
+
+    // Encrypt using eccrypto (ECIES with secp256k1)
+    const encrypted = await eccrypto.encrypt(publicKeyBuffer, messageBuffer);
+
+    console.log('Encryption successful');
+
+    // Convert encrypted structure to JSON string
+    // eccrypto returns {iv, ephemPublicKey, ciphertext, mac} as Buffers
+    const encryptedData = {
+      iv: encrypted.iv.toString('hex'),
+      ephemPublicKey: encrypted.ephemPublicKey.toString('hex'),
+      ciphertext: encrypted.ciphertext.toString('hex'),
+      mac: encrypted.mac.toString('hex')
+    };
+
+    return JSON.stringify(encryptedData);
+  } catch (error) {
+    console.error('Encryption error:', error);
+    console.error('Public key that failed:', publicKey);
+    throw new Error('Failed to encrypt purchaser name');
+  }
+}
+
+/**
+ * Main Lambda handler
+ */
+exports.handler = async (event) => {
+  console.log('Received event:', JSON.stringify(event, null, 2));
+
+  // CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
+
+  // Handle CORS preflight
+  const method = event.requestContext?.http?.method || event.httpMethod || '';
+  if (method === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+
+  try {
+    // Lambda Function URLs use requestContext.http.path
+    const path = event.requestContext?.http?.path || event.rawPath || event.path || '';
+    const method = event.requestContext?.http?.method || event.httpMethod || '';
+
+    console.log('Path:', path, 'Method:', method);
+
+    // Route: GET /items - Fetch all registry items
+    if (method === 'GET' && path.endsWith('/items')) {
+      return await handleGetItems(headers);
+    }
+
+    // Route: POST /purchase - Mark item as purchased
+    if (method === 'POST' && path.endsWith('/purchase')) {
+      return await handlePurchase(event, headers);
+    }
+
+    // Route: GET /health - Health check
+    if (method === 'GET' && path.endsWith('/health')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          status: 'healthy',
+          relayerAddress: relayerWallet ? relayerWallet.address : 'not initialized',
+          contractAddress: process.env.CONTRACT_ADDRESS
+        })
+      };
+    }
+
+    // Unknown route
+    return {
+      statusCode: 404,
+      headers,
+      body: JSON.stringify({ error: 'Not found' })
+    };
+
+  } catch (error) {
+    console.error('Handler error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: 'Internal server error',
+        message: error.message
+      })
+    };
+  }
+};
+
+/**
+ * Handle GET /items - Fetch all registry items
+ */
+async function handleGetItems(headers) {
+  try {
+    initializeContract();
+
+    const items = await contract.getAllItems();
+
+    // Format items for frontend
+    const formattedItems = items.map((item, index) => ({
+      id: index,
+      name: item.name,
+      description: item.description,
+      url: item.url,
+      imageUrl: item.imageUrl,
+      isPurchased: item.isPurchased,
+      purchasedAt: item.purchasedAt ? Number(item.purchasedAt) : null
+    }));
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        items: formattedItems,
+        count: formattedItems.length
+      })
+    };
+
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: 'Failed to fetch items',
+        message: error.message
+      })
+    };
+  }
+}
+
+/**
+ * Handle POST /purchase - Mark item as purchased
+ */
+async function handlePurchase(event, headers) {
+  try {
+    // Parse request body
+    const body = JSON.parse(event.body || '{}');
+    const { password, itemId, purchaserName } = body;
+
+    // Validate password
+    const expectedPassword = process.env.REGISTRY_PASSWORD;
+    if (!expectedPassword) {
+      console.error('REGISTRY_PASSWORD environment variable not set');
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: 'Server configuration error' })
+      };
+    }
+
+    if (!password || password !== expectedPassword) {
+      console.log('Invalid password attempt');
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Invalid password' })
+      };
+    }
+
+    // Validate input
+    if (itemId === undefined || itemId === null) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'itemId is required' })
+      };
+    }
+
+    if (!purchaserName || purchaserName.trim() === '') {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'purchaserName is required' })
+      };
+    }
+
+    // Initialize contract
+    initializeContract();
+
+    // Check if item exists and is not already purchased
+    const item = await contract.getItem(itemId);
+    if (item.isPurchased) {
+      return {
+        statusCode: 409,
+        headers,
+        body: JSON.stringify({
+          error: 'Item already purchased',
+          itemId
+        })
+      };
+    }
+
+    // Encrypt purchaser name
+    const encryptedName = await encryptPurchaserName(
+      process.env.OWNER_PUBLIC_KEY,
+      purchaserName.trim()
+    );
+
+    console.log(`Marking item ${itemId} as purchased by ${purchaserName}`);
+
+    // Submit transaction
+    const tx = await contract.markAsPurchased(itemId, encryptedName);
+    console.log('Transaction submitted:', tx.hash);
+
+    // Wait for confirmation
+    const receipt = await tx.wait();
+    console.log('Transaction confirmed:', receipt.hash);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        itemId,
+        transactionHash: receipt.hash,
+        message: 'Item marked as purchased successfully'
+      })
+    };
+
+  } catch (error) {
+    console.error('Error processing purchase:', error);
+
+    // Handle specific errors
+    if (error.message.includes('already purchased')) {
+      return {
+        statusCode: 409,
+        headers,
+        body: JSON.stringify({
+          error: 'Item already purchased'
+        })
+      };
+    }
+
+    if (error.message.includes('Invalid item ID')) {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({
+          error: 'Item not found'
+        })
+      };
+    }
+
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: 'Failed to process purchase',
+        message: error.message
+      })
+    };
+  }
+}

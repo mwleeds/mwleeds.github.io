@@ -1,0 +1,16 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "description": "A decentralized wedding registry built on Base L2 (Ethereum Layer 2).",
+  "main": "deploy-simple.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ethers": "^6.16.0",
+    "solc": "^0.8.20"
+  }
+}

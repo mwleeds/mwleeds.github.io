@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Wedding Registry Relayer for Base L2
+
+Parameters:
+  RelayerPrivateKey:
+    Type: String
+    NoEcho: true
+    Description: Private key of the relayer wallet that pays gas fees
+
+  ContractAddress:
+    Type: String
+    Description: Deployed WeddingRegistry contract address on Base L2
+
+  OwnerPublicKey:
+    Type: String
+    Description: Owner's Ethereum public key for encrypting purchaser names
+
+  BaseRpcUrl:
+    Type: String
+    Default: https://mainnet.base.org
+    Description: Base L2 RPC endpoint
+
+  RegistryPassword:
+    Type: String
+    NoEcho: true
+    Description: Password shared with wedding guests to mark items purchased
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: nodejs18.x
+
+Resources:
+  WeddingRegistryRelayerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: wedding-registry-relayer
+      CodeUri: ./
+      Handler: index.handler
+      Environment:
+        Variables:
+          RELAYER_PRIVATE_KEY: !Ref RelayerPrivateKey
+          CONTRACT_ADDRESS: !Ref ContractAddress
+          OWNER_PUBLIC_KEY: !Ref OwnerPublicKey
+          BASE_RPC_URL: !Ref BaseRpcUrl
+          REGISTRY_PASSWORD: !Ref RegistryPassword
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins:
+            - "*"
+          AllowMethods:
+            - GET
+            - POST
+            - OPTIONS
+          AllowHeaders:
+            - Content-Type
+
+Outputs:
+  FunctionUrl:
+    Description: "Function URL for the relayer API"
+    Value: !GetAtt WeddingRegistryRelayerFunctionUrl.FunctionUrl
+
+  FunctionArn:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt WeddingRegistryRelayerFunction.Arn
