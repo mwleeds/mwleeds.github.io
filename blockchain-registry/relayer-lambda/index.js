@@ -22,7 +22,7 @@ const CONTRACT_ABI = [
   'function markAsPurchased(uint256 itemId, string encryptedPurchaserName)',
   'function getItem(uint256 itemId) view returns (tuple(string name, string description, string url, string imageUrl, bool isPurchased, bool isDeleted, string encryptedPurchaserName, uint256 purchasedAt))',
   'function items(uint256) view returns (tuple(string name, string description, string url, string imageUrl, bool isPurchased, bool isDeleted, string encryptedPurchaserName, uint256 purchasedAt))',
-  'function getAllItems() view returns (tuple(string name, string description, string url, string imageUrl, bool isPurchased, string encryptedPurchaserName, uint256 purchasedAt)[])'
+  'function getAllItems() view returns (tuple(string name, string description, string url, string imageUrl, bool isPurchased, bool isDeleted, string encryptedPurchaserName, uint256 purchasedAt)[])'
 ];
 
 // Initialize provider and contract (reused across invocations)
