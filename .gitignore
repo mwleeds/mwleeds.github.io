@@ -1,6 +1,8 @@
 _site
 .DS_Store
 .jekyll-cache
+.bundle/
+vendor/
 
 # Blockchain registry
 blockchain-registry/**/.env
