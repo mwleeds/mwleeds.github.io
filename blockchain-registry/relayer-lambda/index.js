@@ -294,10 +294,13 @@ async function handlePurchase(event, headers) {
     // Use contract.items() instead of getItem() - it's the auto-generated public state variable getter
     // and ethers.js handles it more reliably than the custom getItem() function
     const item = await contract.items(itemId);
-    console.log(`Item ${itemId} status:`, {
+
+    console.log(`Item ${itemId} raw data:`, {
       name: item.name,
       isPurchased: item.isPurchased,
-      isDeleted: item.isDeleted
+      isPurchasedType: typeof item.isPurchased,
+      isDeleted: item.isDeleted,
+      encryptedName: item.encryptedPurchaserName ? item.encryptedPurchaserName.substring(0, 50) : 'empty'
     });
 
     if (item.isPurchased) {
