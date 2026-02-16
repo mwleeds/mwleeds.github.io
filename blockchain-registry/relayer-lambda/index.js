@@ -16,6 +16,7 @@
 
 const { ethers } = require('ethers');
 const eccrypto = require('eccrypto');
+const https = require('https');
 
 // Contract ABI - only the functions we need
 // IMPORTANT: Must use named tuple fields for proper decoding
@@ -86,6 +87,60 @@ async function encryptPurchaserName(publicKey, name) {
     console.error('Encryption error:', error);
     console.error('Public key that failed:', publicKey);
     throw new Error('Failed to encrypt purchaser name');
+  }
+}
+
+/**
+ * Submit purchase notification to Formspree
+ */
+async function submitPurchaseNotification(itemId, itemName, purchaserName, transactionHash) {
+  try {
+    const formspreeEndpoint = process.env.FORMSPREE_ENDPOINT;
+    if (!formspreeEndpoint) {
+      console.log('FORMSPREE_ENDPOINT not configured, skipping notification');
+      return;
+    }
+
+    const data = JSON.stringify({
+      item_name: itemName,
+      item_id: itemId,
+      purchaser_name: purchaserName,
+      transaction_hash: transactionHash,
+      timestamp: new Date().toLocaleString()
+    });
+
+    const url = new URL(formspreeEndpoint);
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': data.length
+      }
+    };
+
+    await new Promise((resolve, reject) => {
+      const req = https.request(options, (res) => {
+        let responseData = '';
+        res.on('data', (chunk) => { responseData += chunk; });
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            console.log('Purchase notification submitted to Formspree');
+            resolve();
+          } else {
+            reject(new Error(`Formspree responded with status ${res.statusCode}`));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.write(data);
+      req.end();
+    });
+  } catch (error) {
+    console.error('Error submitting purchase notification:', error);
+    // Don't fail the purchase if notification fails
   }
 }
 
@@ -330,6 +385,11 @@ async function handlePurchase(event, headers) {
     // Wait for confirmation
     const receipt = await tx.wait();
     console.log('Transaction confirmed:', receipt.hash);
+
+    // Submit purchase notification to Formspree (non-blocking)
+    submitPurchaseNotification(itemId, item.name, purchaserName, receipt.hash).catch(err => {
+      console.error('Failed to submit purchase notification:', err);
+    });
 
     return {
       statusCode: 200,
