@@ -291,7 +291,9 @@ async function handlePurchase(event, headers) {
     initializeContract();
 
     // Check if item exists and is not already purchased
-    const item = await contract.getItem(itemId);
+    // Use contract.items() instead of getItem() - it's the auto-generated public state variable getter
+    // and ethers.js handles it more reliably than the custom getItem() function
+    const item = await contract.items(itemId);
     console.log(`Item ${itemId} status:`, {
       name: item.name,
       isPurchased: item.isPurchased,
