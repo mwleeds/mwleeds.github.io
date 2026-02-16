@@ -244,10 +244,19 @@ async function handleGetItems(headers) {
           purchasedAt: item.purchasedAt ? Number(item.purchasedAt) : null
         });
       } catch (error) {
+        // Log full error details for debugging
+        console.log(`Error at index ${index}:`, {
+          message: error.message,
+          code: error.code,
+          reason: error.reason,
+          data: error.data
+        });
+
         // Check if this is an "end of array" error
         const isEndOfArray =
           error.message?.includes('Invalid item ID') ||
           error.message?.includes('out of bounds') ||
+          error.message?.includes('index out of bounds') ||
           (error.code === 'CALL_EXCEPTION' && !error.message?.includes('overflow'));
 
         if (isEndOfArray) {

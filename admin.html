@@ -232,6 +232,13 @@ async function loadItems() {
 
         items.push(itemObj);
       } catch (error) {
+        // Log full error details for debugging
+        console.log(`Error at index ${i}:`, {
+          message: error.message,
+          code: error.code,
+          reason: error.reason
+        });
+
         // Reached end of items array
         console.log(`Reached end of items at index ${i}`);
         break;
