@@ -245,38 +245,34 @@ async function loadItems() {
       return;
     }
 
-    items.forEach((item) => {
+    items.forEach((item, index) => {
       const itemDiv = document.createElement('div');
-      itemDiv.className = 'card mb-3';
+      itemDiv.style.borderBottom = '1px solid #e9ecef';
+      itemDiv.style.paddingBottom = '15px';
+      itemDiv.style.marginBottom = '15px';
 
       // Build action buttons
       let actionButtons = '';
       if (!item.isDeleted) {
         if (item.isPurchased) {
-          actionButtons += `<button class="btn btn-sm btn-warning me-2" onclick="resetItem(${item.id})">Reset to Available</button>`;
+          actionButtons += `<button class="btn btn-sm btn-warning" onclick="resetItem(${item.id})" style="margin-right: 8px;">Reset to Available</button>`;
         }
         actionButtons += `<button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button>`;
       }
 
       itemDiv.innerHTML = `
-        <div class="card-body">
-          <div style="display: flex; justify-content: space-between; align-items: start;">
-            <div style="flex: 1;">
-              <h6 class="card-title">
-                #${item.id}: ${item.name}
-              </h6>
-              <p class="text-muted small">${item.description || 'No description'}</p>
-              ${item.url ? `<p class="small"><a href="${item.url}" target="_blank">View Product</a></p>` : ''}
-              <p class="small">
-                <strong>Status:</strong>
-                ${item.isDeleted ? '<span class="badge bg-danger">Deleted</span>' : item.isPurchased ? '<span class="badge bg-success">Purchased</span>' : '<span class="badge bg-info">Available</span>'}
-              </p>
-              ${item.isPurchased && !item.isDeleted ? `<p class="small text-muted">Purchased: ${new Date(Number(item.purchasedAt) * 1000).toLocaleString()}</p>` : ''}
-            </div>
-            <div style="white-space: nowrap;">
-              ${actionButtons}
-            </div>
-          </div>
+        <h6 style="margin-bottom: 8px; margin-top: 0;">
+          #${item.id}: ${item.name}
+        </h6>
+        <p class="text-muted small" style="margin-bottom: 8px;">${item.description || 'No description'}</p>
+        ${item.url ? `<p class="small" style="margin-bottom: 8px;"><a href="${item.url}" target="_blank">View Product</a></p>` : ''}
+        <p class="small" style="margin-bottom: 12px;">
+          <strong>Status:</strong>
+          ${item.isDeleted ? '<span class="badge bg-danger">Deleted</span>' : item.isPurchased ? '<span class="badge bg-success">Purchased</span>' : '<span class="badge bg-info">Available</span>'}
+        </p>
+        ${item.isPurchased && !item.isDeleted ? `<p class="small text-muted" style="margin-bottom: 12px;">Purchased: ${new Date(Number(item.purchasedAt) * 1000).toLocaleString()}</p>` : ''}
+        <div style="display: flex; gap: 8px;">
+          ${actionButtons}
         </div>
       `;
       itemsList.appendChild(itemDiv);
