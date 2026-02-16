@@ -1,7 +1,12 @@
-import './main.scss';
+// Expose Bootstrap globally FIRST before anything else
 import * as BootstrapModule from 'bootstrap';
-require('./js/nav');
+try {
+  window.bootstrap = BootstrapModule;
+  console.log('Bootstrap exposed globally:', typeof window.bootstrap);
+} catch (error) {
+  console.error('Failed to expose bootstrap:', error);
+}
 
-// Expose Bootstrap globally for inline scripts
-window.bootstrap = BootstrapModule;
+import './main.scss';
+require('./js/nav');
 

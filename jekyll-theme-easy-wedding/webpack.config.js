@@ -16,13 +16,7 @@ module.exports = {
     modules: ['node_modules'],
   },
   optimization: {
-    minimizer: [
-      new UglifyJsPlugin({
-        cache: true,
-        parallel: true,
-        sourceMap: true, // set to true if you want JS source maps
-      }),
-    ],
+    minimize: false, // Disable minification for easier debugging
   },
   module: {
     rules: [

@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
       echo ""
       echo "Options:"
       echo "  --no-webpack    Skip webpack build"
-      echo "  --jekyll        Build Jekyll site (requires bundle install)"
+      echo "  --jekyll        Build Jekyll site with Docker"
       echo "  --serve         Start development server with Docker Compose"
       echo "  -h, --help      Show this help message"
       exit 0
@@ -57,28 +57,32 @@ if [ "$BUILD_WEBPACK" = true ]; then
 
   # Extract bundle
   container_id=$(docker create jekyll-webpack-builder)
-  docker cp "$container_id:/app/assets/main-bundle.js" assets/main-bundle.js
+  docker cp "$container_id:/app/assets/main-bundle.js" assets/js/main-bundle.js
   docker rm "$container_id"
 
-  # Copy to both locations for compatibility
-  cp assets/main-bundle.js assets/js/main-bundle.js
-
   echo -e "${GREEN}✓ Webpack bundle built successfully${NC}"
-  echo -e "  Output: assets/main-bundle.js, assets/js/main-bundle.js\n"
+  echo -e "  Output: assets/js/main-bundle.js\n"
 
   cd ..
 fi
 
 # Build Jekyll site
 if [ "$BUILD_JEKYLL" = true ]; then
-  echo -e "${YELLOW}Building Jekyll site...${NC}"
+  echo -e "${YELLOW}Building Jekyll site with Docker...${NC}"
 
-  if ! command -v bundle &> /dev/null; then
-    echo -e "${RED}Error: bundle not found. Install Ruby and run: bundle install${NC}"
-    exit 1
+  # Build the Docker image if it doesn't exist
+  if ! docker image inspect jekyll-builder &> /dev/null; then
+    echo -e "${BLUE}Building Jekyll Docker image (first time only)...${NC}"
+    docker build -f Dockerfile.dev -t jekyll-builder . > /tmp/jekyll-build.log 2>&1
   fi
 
-  JEKYLL_ENV=production bundle exec jekyll build
+  # Run Jekyll build in container with volume mount
+  docker run --rm \
+    -v "$(pwd):/srv/jekyll" \
+    -e JEKYLL_ENV=production \
+    jekyll-builder \
+    bundle exec jekyll build
+
   echo -e "${GREEN}✓ Jekyll site built successfully${NC}"
   echo -e "  Output: _site/\n"
 fi

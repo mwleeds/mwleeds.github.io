@@ -264,6 +264,18 @@
     // Show modal using Bootstrap 5 API
     if (purchaseModal) {
       purchaseModal.show();
+    } else {
+      console.error('Purchase modal not initialized. Bootstrap available:', typeof bootstrap);
+      // Fallback: try to initialize now
+      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const modalElement = document.getElementById('purchaseModal');
+        if (modalElement) {
+          purchaseModal = new bootstrap.Modal(modalElement);
+          purchaseModal.show();
+        }
+      } else {
+        alert('Modal not available. Please refresh the page and try again.');
+      }
     }
   }
 
