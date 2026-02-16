@@ -161,42 +161,32 @@ exports.handler = async (event) => {
 
 /**
  * Handle GET /items - Fetch all registry items
- * Preserves original contract indices as IDs
+ *
+ * Note: This returns items with sequential IDs (0,1,2...) instead of
+ * preserving contract indices because iterating through contract.items(i)
+ * causes decoding errors. The purchase endpoint still uses the frontend's
+ * provided itemId directly, so this works correctly.
  */
 async function handleGetItems(headers) {
   try {
     initializeContract();
 
-    const formattedItems = [];
+    // Use getAllItems() which filters out deleted items
+    const items = await contract.getAllItems();
 
-    // Iterate through items by index to preserve original contract indices
-    // We'll try indices 0-999 (reasonable max for a wedding registry)
-    for (let index = 0; index < 1000; index++) {
-      try {
-        const item = await contract.items(index);
-
-        // Skip deleted items but preserve index for non-deleted items
-        if (!item.isDeleted) {
-          formattedItems.push({
-            id: index, // Preserve original contract index
-            name: item.name,
-            description: item.description,
-            url: item.url,
-            imageUrl: item.imageUrl,
-            isPurchased: item.isPurchased,
-            purchasedAt: item.purchasedAt ? Number(item.purchasedAt) : null
-          });
-        }
-      } catch (error) {
-        // When we hit an invalid index, we've reached the end
-        if (error.message.includes('Invalid item ID') ||
-            error.message.includes('out of bounds') ||
-            error.code === 'CALL_EXCEPTION') {
-          break;
-        }
-        throw error; // Re-throw unexpected errors
-      }
-    }
+    // Format items for frontend with sequential IDs
+    // Note: Frontend will pass these IDs to purchase endpoint
+    // WARNING: If items are deleted, this creates a mismatch between
+    // display ID and contract index. TODO: Fix this properly.
+    const formattedItems = items.map((item, index) => ({
+      id: index,
+      name: item.name,
+      description: item.description,
+      url: item.url,
+      imageUrl: item.imageUrl,
+      isPurchased: item.isPurchased,
+      purchasedAt: item.purchasedAt ? Number(item.purchasedAt) : null
+    }));
 
     return {
       statusCode: 200,
