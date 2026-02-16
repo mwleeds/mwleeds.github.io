@@ -161,32 +161,62 @@ exports.handler = async (event) => {
 
 /**
  * Handle GET /items - Fetch all registry items
- *
- * Note: This returns items with sequential IDs (0,1,2...) instead of
- * preserving contract indices because iterating through contract.items(i)
- * causes decoding errors. The purchase endpoint still uses the frontend's
- * provided itemId directly, so this works correctly.
+ * Returns ALL items including deleted ones with original contract indices preserved
+ * Frontend filters out deleted items for display
  */
 async function handleGetItems(headers) {
   try {
     initializeContract();
 
-    // Use getAllItems() which filters out deleted items
-    const items = await contract.getAllItems();
+    const formattedItems = [];
 
-    // Format items for frontend with sequential IDs
-    // Note: Frontend will pass these IDs to purchase endpoint
-    // WARNING: If items are deleted, this creates a mismatch between
-    // display ID and contract index. TODO: Fix this properly.
-    const formattedItems = items.map((item, index) => ({
-      id: index,
-      name: item.name,
-      description: item.description,
-      url: item.url,
-      imageUrl: item.imageUrl,
-      isPurchased: item.isPurchased,
-      purchasedAt: item.purchasedAt ? Number(item.purchasedAt) : null
-    }));
+    // Iterate through potential item indices
+    // We'll try up to 1000 items (reasonable max for a registry)
+    for (let index = 0; index < 1000; index++) {
+      try {
+        const item = await contract.items(index);
+
+        // Include ALL items (even deleted ones) to preserve indices
+        formattedItems.push({
+          id: index, // Preserve original contract index
+          name: item.name,
+          description: item.description,
+          url: item.url,
+          imageUrl: item.imageUrl,
+          isPurchased: item.isPurchased,
+          isDeleted: item.isDeleted, // Frontend will filter these out
+          purchasedAt: item.purchasedAt ? Number(item.purchasedAt) : null
+        });
+      } catch (error) {
+        // Check if this is an "end of array" error
+        const isEndOfArray =
+          error.message?.includes('Invalid item ID') ||
+          error.message?.includes('out of bounds') ||
+          (error.code === 'CALL_EXCEPTION' && !error.message?.includes('overflow'));
+
+        if (isEndOfArray) {
+          // Reached the end of items array
+          console.log(`Reached end of items at index ${index}`);
+          break;
+        }
+
+        // For other errors (like overflow/decoding errors), log and skip this index
+        // This handles corrupted or problematic items gracefully
+        console.warn(`Error loading item at index ${index}:`, error.message);
+
+        // Add a placeholder for this broken item so indices stay stable
+        formattedItems.push({
+          id: index,
+          name: `[Error loading item ${index}]`,
+          description: 'This item could not be loaded',
+          url: '',
+          imageUrl: '',
+          isPurchased: false,
+          isDeleted: true, // Mark as deleted so frontend hides it
+          purchasedAt: null
+        });
+      }
+    }
 
     return {
       statusCode: 200,

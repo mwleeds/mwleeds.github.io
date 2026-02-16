@@ -221,7 +221,10 @@
     const container = document.getElementById('registry-items');
     container.innerHTML = '';
 
-    items.forEach(item => {
+    // Filter out deleted items (but keep the IDs stable for purchases)
+    const activeItems = items.filter(item => !item.isDeleted);
+
+    activeItems.forEach(item => {
       const col = document.createElement('div');
       col.className = 'col-md-4 col-sm-6 registry-item';
 
