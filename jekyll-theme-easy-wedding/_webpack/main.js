@@ -1,4 +1,7 @@
 import './main.scss';
-import { Modal } from 'bootstrap';
+import * as BootstrapModule from 'bootstrap';
 require('./js/nav');
+
+// Expose Bootstrap globally for inline scripts
+window.bootstrap = BootstrapModule;
 

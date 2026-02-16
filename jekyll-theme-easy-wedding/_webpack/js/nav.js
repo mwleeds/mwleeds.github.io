@@ -24,37 +24,15 @@ function changeNavOnScroll(navbar) {
 
 docReady(() => {
   const navbar = document.getElementById('navbar');
-  const navLinks = document.getElementsByClassName('nav-link');
-  const collapseMenu = document.getElementById('navbar-main-collapse');
 
   // Only initialize if navbar exists
   if (!navbar) {
     return;
   }
 
-  document.addEventListener("scroll", () => changeNavOnScroll(navbar));
-
-  navbar.addEventListener('show.bs.collapse', (e) => {
-    navbar.classList.add('is-expanded');
-  });
-
-  navbar.addEventListener('hide.bs.collapse', (e) => {
-    navbar.classList.remove('is-expanded');
-  });
-
-  if (collapseMenu) {
-    // Get or create the Bootstrap Collapse instance
-    let bsCollapse = Collapse.getInstance(collapseMenu);
-    if (!bsCollapse) {
-      bsCollapse = new Collapse(collapseMenu, {
-        toggle: false
-      });
-    }
-
-    [...navLinks].forEach((link) => {
-      link.addEventListener('click', (e) => {
-        bsCollapse.hide();
-      });
-    });
+  try {
+    document.addEventListener("scroll", () => changeNavOnScroll(navbar));
+  } catch (error) {
+    console.warn('Error in scroll handler:', error);
   }
 });

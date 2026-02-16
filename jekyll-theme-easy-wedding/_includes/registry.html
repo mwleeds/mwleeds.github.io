@@ -165,10 +165,30 @@
   const REGISTRY_ACCESS_KEY = '20260524'; // Wedding date - used for registry verification
 
   let currentItem = null;
+  let purchaseModal = null;
 
   // Load registry items on page load
   document.addEventListener('DOMContentLoaded', function() {
+    // Load items immediately
     loadRegistryItems();
+
+    // Initialize Bootstrap modal - wait for bootstrap to be available
+    const initializeModal = () => {
+      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const modalElement = document.getElementById('purchaseModal');
+        if (modalElement) {
+          purchaseModal = new bootstrap.Modal(modalElement);
+        }
+      } else {
+        // Retry after a short delay, max 10 times
+        if (!window._modalRetryCount) window._modalRetryCount = 0;
+        if (window._modalRetryCount < 10) {
+          window._modalRetryCount++;
+          setTimeout(initializeModal, 100);
+        }
+      }
+    };
+    initializeModal();
   });
 
   async function loadRegistryItems() {
@@ -241,7 +261,10 @@
     document.getElementById('purchase-status').style.display = 'none';
     document.getElementById('confirm-purchase-btn').disabled = false;
 
-    $('#purchaseModal').modal('show');
+    // Show modal using Bootstrap 5 API
+    if (purchaseModal) {
+      purchaseModal.show();
+    }
   }
 
   // Handle purchase confirmation
@@ -277,7 +300,9 @@
 
         // Reload items after 2 seconds
         setTimeout(function() {
-          $('#purchaseModal').modal('hide');
+          if (purchaseModal) {
+            purchaseModal.hide();
+          }
           loadRegistryItems();
         }, 2000);
       } else {
