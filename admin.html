@@ -1,0 +1,302 @@
+---
+layout: admin
+title: Registry Admin
+---
+
+<div class="container" style="margin-top: 30px; margin-bottom: 30px;">
+  <h1>Registry Admin Dashboard</h1>
+
+  <div class="alert alert-warning">
+    <strong>Admin Access</strong> - Connect your owner wallet to manage registry items
+  </div>
+
+  <!-- Connection Status -->
+  <div class="card" style="margin-bottom: 20px;">
+    <div class="card-body">
+      <h5 class="card-title">Wallet Connection</h5>
+      <button class="btn btn-primary" id="connect-wallet" onclick="connectWallet()">Connect Wallet</button>
+      <div id="wallet-status" style="margin-top: 10px; display: none;">
+        <p>Connected: <strong id="wallet-address"></strong></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Item Form -->
+  <div class="card" style="margin-bottom: 20px;">
+    <div class="card-body">
+      <h5 class="card-title">Add Item</h5>
+      <form onsubmit="addItem(event)">
+        <div class="mb-3">
+          <label for="item-name" class="form-label">Item Name</label>
+          <input type="text" class="form-control" id="item-name" placeholder="e.g., Coffee Maker" required>
+        </div>
+        <div class="mb-3">
+          <label for="item-description" class="form-label">Description</label>
+          <input type="text" class="form-control" id="item-description" placeholder="Optional description">
+        </div>
+        <div class="mb-3">
+          <label for="item-url" class="form-label">URL</label>
+          <input type="url" class="form-control" id="item-url" placeholder="https://example.com">
+        </div>
+        <div class="mb-3">
+          <label for="item-image" class="form-label">Image URL</label>
+          <input type="url" class="form-control" id="item-image" placeholder="https://example.com/image.jpg">
+        </div>
+        <button type="submit" class="btn btn-success">Add Item</button>
+      </form>
+      <div id="add-status" style="margin-top: 10px;"></div>
+    </div>
+  </div>
+
+  <!-- Items List -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Registry Items</h5>
+      <div id="items-list">
+        <p class="text-muted">Connect wallet to view items</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js" integrity="sha384-tVisdJ1MRZqej8bqmBNU9m3Gd3FN6xhhCMSWW3eJWnpsaR2XvOQWMBY08U6BIKMw" crossorigin="anonymous"></script>
+<script>
+const CONTRACT_ADDRESS = '0x46FDB6d70c5584F0fa359ad24F405d76b4DE52A3';
+const CONTRACT_ABI = [
+  {
+    "inputs": [
+      {"internalType": "string", "name": "_name", "type": "string"},
+      {"internalType": "string", "name": "_description", "type": "string"},
+      {"internalType": "string", "name": "_url", "type": "string"},
+      {"internalType": "string", "name": "_imageUrl", "type": "string"}
+    ],
+    "name": "addItem",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "itemId", "type": "uint256"}],
+    "name": "removeItem",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "name": "items",
+    "outputs": [
+      {"internalType": "string", "name": "name", "type": "string"},
+      {"internalType": "string", "name": "description", "type": "string"},
+      {"internalType": "string", "name": "url", "type": "string"},
+      {"internalType": "string", "name": "imageUrl", "type": "string"},
+      {"internalType": "bool", "name": "isPurchased", "type": "bool"},
+      {"internalType": "bool", "name": "isDeleted", "type": "bool"},
+      {"internalType": "string", "name": "encryptedPurchaserName", "type": "string"},
+      {"internalType": "uint256", "name": "purchasedAt", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getItemCount",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllItems",
+    "outputs": [
+      {
+        "components": [
+          {"internalType": "string", "name": "name", "type": "string"},
+          {"internalType": "string", "name": "description", "type": "string"},
+          {"internalType": "string", "name": "url", "type": "string"},
+          {"internalType": "string", "name": "imageUrl", "type": "string"},
+          {"internalType": "bool", "name": "isPurchased", "type": "bool"},
+          {"internalType": "bool", "name": "isDeleted", "type": "bool"},
+          {"internalType": "string", "name": "encryptedPurchaserName", "type": "string"},
+          {"internalType": "uint256", "name": "purchasedAt", "type": "uint256"}
+        ],
+        "internalType": "struct WeddingRegistry.RegistryItem[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+let provider, signer, contract, userAddress;
+
+async function connectWallet() {
+  try {
+    if (!window.ethereum) {
+      alert('Please install MetaMask or another Ethereum wallet');
+      return;
+    }
+
+    provider = new ethers.BrowserProvider(window.ethereum);
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    userAddress = accounts[0];
+
+    // Switch to Base network (chain ID 8453)
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x2105' }], // 8453 in hex
+      });
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        // Base network not added, add it
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x2105',
+            chainName: 'Base',
+            rpcUrls: ['https://mainnet.base.org'],
+            blockExplorerUrls: ['https://basescan.org'],
+            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }
+          }],
+        });
+      } else {
+        throw switchError;
+      }
+    }
+
+    signer = await provider.getSigner();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+    // Check network
+    const network = await provider.getNetwork();
+    const chainId = Number(network.chainId);
+    console.log('Connected to network:', network.name, 'Chain ID:', chainId);
+
+    if (chainId !== 8453) {
+      throw new Error(`Wrong network. Connected to ${network.name} (${chainId}), expected Base (8453)`);
+    }
+
+    // Check if contract code exists
+    const code = await provider.getCode(CONTRACT_ADDRESS);
+    if (code === '0x') {
+      throw new Error(`No contract found at ${CONTRACT_ADDRESS} on Base network`);
+    }
+
+    document.getElementById('wallet-address').textContent = userAddress;
+    document.getElementById('wallet-status').style.display = 'block';
+    document.getElementById('connect-wallet').disabled = true;
+
+    // Load items
+    loadItems();
+  } catch (error) {
+    alert('Error connecting wallet: ' + error.message);
+  }
+}
+
+async function loadItems() {
+  try {
+    let allItems = await contract.getAllItems();
+
+    const itemsList = document.getElementById('items-list');
+    itemsList.innerHTML = '';
+
+    if (allItems.length === 0) {
+      itemsList.innerHTML = '<p class="text-muted">No items in registry</p>';
+      return;
+    }
+
+    allItems.forEach((item, index) => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'card mb-3';
+      itemDiv.innerHTML = `
+        <div class="card-body">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="flex: 1;">
+              <h6 class="card-title">${item.name}</h6>
+              <p class="text-muted small">${item.description}</p>
+              <p class="small">
+                <strong>Status:</strong>
+                ${item.isDeleted ? '<span class="badge bg-danger">Deleted</span>' : item.isPurchased ? '<span class="badge bg-success">Purchased</span>' : '<span class="badge bg-info">Available</span>'}
+              </p>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="deleteItem(${index})" ${item.isDeleted ? 'disabled' : ''}>Delete</button>
+          </div>
+        </div>
+      `;
+      itemsList.appendChild(itemDiv);
+    });
+  } catch (error) {
+    console.error('Error loading items:', error);
+    document.getElementById('items-list').innerHTML = `<p class="text-danger">Error loading items: ${error.message}</p>`;
+  }
+}
+
+async function addItem(event) {
+  event.preventDefault();
+
+  if (!contract) {
+    alert('Please connect wallet first');
+    return;
+  }
+
+  try {
+    const name = document.getElementById('item-name').value;
+    const description = document.getElementById('item-description').value;
+    const url = document.getElementById('item-url').value;
+    const imageUrl = document.getElementById('item-image').value;
+
+    const statusDiv = document.getElementById('add-status');
+    statusDiv.innerHTML = '<p class="text-info">Adding item...</p>';
+
+    const tx = await contract.addItem(name, description, url, imageUrl);
+    statusDiv.innerHTML = '<p class="text-info">Waiting for confirmation...</p>';
+
+    await tx.wait();
+
+    statusDiv.innerHTML = '<p class="text-success">Item added successfully!</p>';
+
+    // Clear form
+    event.target.reset();
+
+    // Reload items
+    setTimeout(loadItems, 1000);
+  } catch (error) {
+    document.getElementById('add-status').innerHTML = `<p class="text-danger">Error: ${error.message}</p>`;
+  }
+}
+
+async function deleteItem(itemId) {
+  if (!contract) {
+    alert('Please connect wallet first');
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to delete item ${itemId}?`)) {
+    return;
+  }
+
+  try {
+    const tx = await contract.removeItem(itemId);
+    alert('Deletion transaction sent, waiting for confirmation...');
+    await tx.wait();
+    alert('Item deleted successfully!');
+    loadItems();
+  } catch (error) {
+    alert('Error deleting item: ' + error.message);
+  }
+}
+
+// Listen for account changes
+if (window.ethereum) {
+  window.ethereum.on('accountsChanged', (accounts) => {
+    if (accounts.length === 0) {
+      document.getElementById('wallet-status').style.display = 'none';
+      document.getElementById('connect-wallet').disabled = false;
+      userAddress = null;
+    }
+  });
+}
+</script>

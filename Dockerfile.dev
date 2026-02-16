@@ -1,0 +1,23 @@
+FROM ruby:3.2-alpine
+
+# Install dependencies
+RUN apk add --no-cache \
+    build-base \
+    gcc \
+    cmake \
+    git
+
+WORKDIR /srv/jekyll
+
+# Copy Gemfile and theme directory
+COPY Gemfile* ./
+COPY jekyll-theme-easy-wedding ./jekyll-theme-easy-wedding/
+
+# Install bundler and gems
+RUN gem install bundler && bundle install
+
+# Expose Jekyll port
+EXPOSE 4000 35729
+
+# Start Jekyll server with live reload
+CMD ["bundle", "exec", "jekyll", "serve", "--host", "0.0.0.0", "--livereload", "--force_polling"]
