@@ -83,6 +83,13 @@ const CONTRACT_ABI = [
     "type": "function"
   },
   {
+    "inputs": [{"internalType": "uint256", "name": "itemId", "type": "uint256"}],
+    "name": "resetItem",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
     "name": "items",
     "outputs": [
@@ -198,31 +205,59 @@ async function connectWallet() {
 
 async function loadItems() {
   try {
-    let allItems = await contract.getAllItems();
-
     const itemsList = document.getElementById('items-list');
+    itemsList.innerHTML = '<p class="text-muted">Loading items...</p>';
+
+    // Load items by iterating through indices to preserve original contract IDs
+    const items = [];
+    for (let i = 0; i < 1000; i++) {
+      try {
+        const item = await contract.items(i);
+        items.push({ id: i, ...item });
+      } catch (error) {
+        // Reached end of items array
+        break;
+      }
+    }
+
     itemsList.innerHTML = '';
 
-    if (allItems.length === 0) {
+    if (items.length === 0) {
       itemsList.innerHTML = '<p class="text-muted">No items in registry</p>';
       return;
     }
 
-    allItems.forEach((item, index) => {
+    items.forEach((item) => {
       const itemDiv = document.createElement('div');
       itemDiv.className = 'card mb-3';
+
+      // Build action buttons
+      let actionButtons = '';
+      if (!item.isDeleted) {
+        if (item.isPurchased) {
+          actionButtons += `<button class="btn btn-sm btn-warning me-2" onclick="resetItem(${item.id})">Reset to Available</button>`;
+        }
+        actionButtons += `<button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button>`;
+      }
+
       itemDiv.innerHTML = `
         <div class="card-body">
           <div style="display: flex; justify-content: space-between; align-items: start;">
             <div style="flex: 1;">
-              <h6 class="card-title">${item.name}</h6>
-              <p class="text-muted small">${item.description}</p>
+              <h6 class="card-title">
+                #${item.id}: ${item.name}
+              </h6>
+              <p class="text-muted small">${item.description || 'No description'}</p>
+              ${item.url ? `<p class="small"><a href="${item.url}" target="_blank">View Product</a></p>` : ''}
               <p class="small">
                 <strong>Status:</strong>
                 ${item.isDeleted ? '<span class="badge bg-danger">Deleted</span>' : item.isPurchased ? '<span class="badge bg-success">Purchased</span>' : '<span class="badge bg-info">Available</span>'}
               </p>
+              ${item.isPurchased && !item.isDeleted ? `<p class="small text-muted">Purchased: ${new Date(Number(item.purchasedAt) * 1000).toLocaleString()}</p>` : ''}
             </div>
-            <button class="btn btn-sm btn-danger" onclick="deleteItem(${index})" ${item.isDeleted ? 'disabled' : ''}>Delete</button>
+            <div style="white-space: nowrap;">
+              ${actionButtons}
+            </div>
           </div>
         </div>
       `;
@@ -274,7 +309,7 @@ async function deleteItem(itemId) {
     return;
   }
 
-  if (!confirm(`Are you sure you want to delete item ${itemId}?`)) {
+  if (!confirm(`Are you sure you want to delete item #${itemId}?`)) {
     return;
   }
 
@@ -286,6 +321,27 @@ async function deleteItem(itemId) {
     loadItems();
   } catch (error) {
     alert('Error deleting item: ' + error.message);
+  }
+}
+
+async function resetItem(itemId) {
+  if (!contract) {
+    alert('Please connect wallet first');
+    return;
+  }
+
+  if (!confirm(`Reset item #${itemId} to available (unpurchased) state?`)) {
+    return;
+  }
+
+  try {
+    const tx = await contract.resetItem(itemId);
+    alert('Reset transaction sent, waiting for confirmation...');
+    await tx.wait();
+    alert('Item reset to available successfully!');
+    loadItems();
+  } catch (error) {
+    alert('Error resetting item: ' + error.message);
   }
 }
 
