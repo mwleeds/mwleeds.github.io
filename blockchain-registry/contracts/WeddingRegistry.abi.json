@@ -147,6 +147,11 @@
             "type": "bool"
           },
           {
+            "internalType": "bool",
+            "name": "isDeleted",
+            "type": "bool"
+          },
+          {
             "internalType": "string",
             "name": "encryptedPurchaserName",
             "type": "string"
@@ -194,6 +199,11 @@
           {
             "internalType": "bool",
             "name": "isPurchased",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isDeleted",
             "type": "bool"
           },
           {
@@ -250,6 +260,11 @@
           {
             "internalType": "bool",
             "name": "isPurchased",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isDeleted",
             "type": "bool"
           },
           {
@@ -367,6 +382,11 @@
       {
         "internalType": "bool",
         "name": "isPurchased",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "isDeleted",
         "type": "bool"
       },
       {
