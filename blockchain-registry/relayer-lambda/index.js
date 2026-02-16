@@ -102,9 +102,9 @@ async function submitPurchaseNotification(itemId, itemName, purchaserName, trans
     }
 
     const data = JSON.stringify({
+      name: purchaserName,
       item_name: itemName,
       item_id: itemId,
-      purchaser_name: purchaserName,
       transaction_hash: transactionHash,
       timestamp: new Date().toLocaleString()
     });
