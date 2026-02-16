@@ -93,11 +93,8 @@ async function encryptPurchaserName(publicKey, name) {
 exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
 
-  // CORS headers
+  // Response headers (CORS handled by Lambda Function URL configuration)
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Content-Type': 'application/json'
   };
 
