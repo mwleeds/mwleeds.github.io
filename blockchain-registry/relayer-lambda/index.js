@@ -227,8 +227,8 @@ async function handleGetItems(headers) {
     const formattedItems = [];
 
     // Iterate through potential item indices
-    // We'll try up to 256 items (reasonable max for a registry)
-    for (let index = 0; index < 256; index++) {
+    // We'll try up to 1024 items as a safety limit; code breaks early when it detects end of array
+    for (let index = 0; index < 1024; index++) {
       try {
         const item = await contract.items(index);
 

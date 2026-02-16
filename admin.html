@@ -213,7 +213,7 @@ async function loadItems() {
 
     // Now load each item individually to get the correct index
     const items = [];
-    for (let i = 0; i < 256; i++) {
+    for (let i = 0; i < 1024; i++) {
       try {
         const item = await contract.items(i);
 
