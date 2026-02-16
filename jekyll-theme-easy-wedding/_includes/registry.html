@@ -1,11 +1,300 @@
-
 <section class="container content-section text-center">
   <div class="row">
     <div class="col-lg-12">
-      <h2>Registry</h2>
-      <p>
-        Coming Soon
-      </p>
+      <h2>Wedding Registry</h2>
+      <p class="lead">Help us start our life together by choosing a gift from our registry.</p>
+      <p><small>Items marked as purchased are no longer available.</small></p>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div id="loading" class="row" style="margin-top: 40px;">
+    <div class="col-lg-12">
+      <p>Loading registry items...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div id="error" class="row" style="display: none; margin-top: 40px;">
+    <div class="col-lg-12">
+      <div class="alert alert-danger">
+        <strong>Error:</strong> <span id="error-message"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Registry Items Grid -->
+  <div id="registry-items" class="row" style="margin-top: 40px; display: none;">
+    <!-- Items will be inserted here by JavaScript -->
+  </div>
+
+  <!-- Empty State -->
+  <div id="empty-state" class="row" style="display: none; margin-top: 40px;">
+    <div class="col-lg-12">
+      <p>No registry items yet. Check back soon!</p>
     </div>
   </div>
 </section>
+
+<!-- Purchase Modal -->
+<div class="modal fade" id="purchaseModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Mark as Purchased</h4>
+      </div>
+      <div class="modal-body">
+        <div id="purchase-item-details"></div>
+        <form id="purchase-form">
+          <div class="form-group">
+            <label for="purchaser-name">Your Name *</label>
+            <input type="text" class="form-control" id="purchaser-name" required placeholder="Enter your name">
+            <small class="form-text text-muted">Your name will be encrypted and only visible to us.</small>
+          </div>
+          <div class="form-group">
+            <label for="registry-password">Registry Password *</label>
+            <input type="password" class="form-control" id="registry-password" required placeholder="Enter registry password">
+            <small class="form-text text-muted">Ask us for the password if you don't have it.</small>
+          </div>
+        </form>
+        <div id="purchase-status" style="margin-top: 20px; display: none;">
+          <div class="alert" id="purchase-alert"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirm-purchase-btn">Confirm Purchase</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .registry-item {
+    margin-bottom: 30px;
+  }
+
+  .registry-item-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.3s;
+  }
+
+  .registry-item-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+
+  .registry-item-card.purchased {
+    opacity: 0.6;
+    background-color: #f9f9f9;
+  }
+
+  .registry-item-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-bottom: 15px;
+  }
+
+  .registry-item-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  .registry-item-description {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 15px;
+    flex-grow: 1;
+  }
+
+  .registry-item-actions {
+    margin-top: auto;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  .status-available {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  .status-purchased {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+
+  .btn-block {
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  #purchase-item-details {
+    background-color: #f5f5f5;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+
+  #purchase-item-details h5 {
+    margin-top: 0;
+  }
+</style>
+
+<script>
+  // Configuration
+  const API_URL = 'https://kvlkcmghhpkfpqfesmubwiajom0nhdql.lambda-url.us-east-2.on.aws';
+
+  let currentItem = null;
+
+  // Load registry items on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    loadRegistryItems();
+  });
+
+  async function loadRegistryItems() {
+    try {
+      const response = await fetch(`${API_URL}/items`);
+
+      if (!response.ok) {
+        throw new Error('Failed to load registry items');
+      }
+
+      const data = await response.json();
+
+      document.getElementById('loading').style.display = 'none';
+
+      if (data.items && data.items.length > 0) {
+        displayItems(data.items);
+        document.getElementById('registry-items').style.display = 'flex';
+      } else {
+        document.getElementById('empty-state').style.display = 'block';
+      }
+    } catch (error) {
+      console.error('Error loading items:', error);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error-message').textContent = error.message;
+    }
+  }
+
+  function displayItems(items) {
+    const container = document.getElementById('registry-items');
+    container.innerHTML = '';
+
+    items.forEach(item => {
+      const col = document.createElement('div');
+      col.className = 'col-md-4 col-sm-6 registry-item';
+
+      col.innerHTML = `
+        <div class="registry-item-card ${item.isPurchased ? 'purchased' : ''}">
+          ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}" class="registry-item-image" onerror="this.style.display='none'">` : ''}
+          <div class="registry-item-name">${item.name}</div>
+          <div class="registry-item-description">${item.description}</div>
+          <div class="registry-item-actions">
+            <span class="status-badge ${item.isPurchased ? 'status-purchased' : 'status-available'}">
+              ${item.isPurchased ? '✓ Purchased' : '○ Available'}
+            </span>
+            ${!item.isPurchased ? `
+              <button class="btn btn-primary btn-block" onclick="openPurchaseModal(${item.id}, '${item.name.replace(/'/g, "\\'")}', '${item.description.replace(/'/g, "\\'")}')">
+                Mark as Purchased
+              </button>
+              ${item.url ? `<a href="${item.url}" target="_blank" class="btn btn-default btn-block">View Product</a>` : ''}
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      container.appendChild(col);
+    });
+  }
+
+  function openPurchaseModal(itemId, itemName, itemDescription) {
+    currentItem = { id: itemId, name: itemName, description: itemDescription };
+
+    document.getElementById('purchase-item-details').innerHTML = `
+      <h5>${itemName}</h5>
+      <p>${itemDescription}</p>
+    `;
+
+    // Reset form
+    document.getElementById('purchase-form').reset();
+    document.getElementById('purchase-status').style.display = 'none';
+    document.getElementById('confirm-purchase-btn').disabled = false;
+
+    $('#purchaseModal').modal('show');
+  }
+
+  // Handle purchase confirmation
+  document.getElementById('confirm-purchase-btn').addEventListener('click', async function() {
+    const name = document.getElementById('purchaser-name').value.trim();
+    const password = document.getElementById('registry-password').value;
+
+    if (!name || !password) {
+      showPurchaseStatus('error', 'Please fill in all fields');
+      return;
+    }
+
+    // Disable button and show loading
+    this.disabled = true;
+    this.textContent = 'Processing...';
+
+    try {
+      const response = await fetch(`${API_URL}/purchase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          itemId: currentItem.id,
+          purchaserName: name,
+          password: password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        showPurchaseStatus('success', 'Item marked as purchased! Thank you!');
+
+        // Reload items after 2 seconds
+        setTimeout(function() {
+          $('#purchaseModal').modal('hide');
+          loadRegistryItems();
+        }, 2000);
+      } else {
+        showPurchaseStatus('error', data.error || 'Failed to process purchase');
+        this.disabled = false;
+        this.textContent = 'Confirm Purchase';
+      }
+    } catch (error) {
+      console.error('Purchase error:', error);
+      showPurchaseStatus('error', 'Network error. Please try again.');
+      this.disabled = false;
+      this.textContent = 'Confirm Purchase';
+    }
+  });
+
+  function showPurchaseStatus(type, message) {
+    const statusDiv = document.getElementById('purchase-status');
+    const alertDiv = document.getElementById('purchase-alert');
+
+    alertDiv.className = 'alert alert-' + (type === 'success' ? 'success' : 'danger');
+    alertDiv.textContent = message;
+    statusDiv.style.display = 'block';
+  }
+</script>
