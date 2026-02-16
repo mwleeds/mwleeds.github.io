@@ -292,7 +292,14 @@ async function handlePurchase(event, headers) {
 
     // Check if item exists and is not already purchased
     const item = await contract.getItem(itemId);
+    console.log(`Item ${itemId} status:`, {
+      name: item.name,
+      isPurchased: item.isPurchased,
+      isDeleted: item.isDeleted
+    });
+
     if (item.isPurchased) {
+      console.warn(`Item ${itemId} is already purchased, rejecting request`);
       return {
         statusCode: 409,
         headers,
