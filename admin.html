@@ -208,14 +208,32 @@ async function loadItems() {
     const itemsList = document.getElementById('items-list');
     itemsList.innerHTML = '<p class="text-muted">Loading items...</p>';
 
-    // Load items by iterating through indices to preserve original contract IDs
+    // First, get the total count using getAllItems (simpler than iterating)
+    const allItems = await contract.getAllItems();
+
+    // Now load each item individually to get the correct index
     const items = [];
     for (let i = 0; i < 1000; i++) {
       try {
         const item = await contract.items(i);
-        items.push({ id: i, ...item });
+
+        // Convert ethers.js Result to plain object
+        const itemObj = {
+          id: i,
+          name: item.name,
+          description: item.description,
+          url: item.url,
+          imageUrl: item.imageUrl,
+          isPurchased: item.isPurchased,
+          isDeleted: item.isDeleted,
+          encryptedPurchaserName: item.encryptedPurchaserName,
+          purchasedAt: item.purchasedAt
+        };
+
+        items.push(itemObj);
       } catch (error) {
         // Reached end of items array
+        console.log(`Reached end of items at index ${i}`);
         break;
       }
     }
