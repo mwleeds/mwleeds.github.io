@@ -37,13 +37,16 @@ function initializeContract() {
     const rpcUrl = process.env.BASE_RPC_URL || 'https://mainnet.base.org';
     provider = new ethers.JsonRpcProvider(rpcUrl);
 
-    relayerWallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY, provider);
+    // Only initialize wallet if private key is provided (needed for purchases)
+    if (process.env.RELAYER_PRIVATE_KEY) {
+      relayerWallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY, provider);
 
-    contract = new ethers.Contract(
-      process.env.CONTRACT_ADDRESS,
-      CONTRACT_ABI,
-      relayerWallet
-    );
+      contract = new ethers.Contract(
+        process.env.CONTRACT_ADDRESS,
+        CONTRACT_ABI,
+        relayerWallet
+      );
+    }
   }
   return contract;
 }
@@ -63,10 +66,11 @@ async function retryWithBackoff(fn, maxRetries = 3) {
     try {
       return await fn();
     } catch (error) {
+      // Only retry on explicit rate limit errors, not all CALL_EXCEPTIONs
       const isRateLimit =
-        error.code === 'CALL_EXCEPTION' ||
         error.message?.includes('rate limit') ||
-        error.message?.includes('429');
+        error.message?.includes('429') ||
+        error.code === -32016; // RPC rate limit code
 
       const isLastAttempt = attempt === maxRetries - 1;
 
@@ -266,67 +270,21 @@ async function handleGetItems(headers) {
       provider // Use provider directly, not wallet
     );
 
-    const formattedItems = [];
+    console.log('Fetching all items using getAllItems()');
+    const allItems = await readOnlyContract.getAllItems();
+    console.log(`Retrieved ${allItems.length} items from contract`);
 
-    // Iterate through potential item indices
-    // We'll try up to 1024 items as a safety limit; code breaks early when it detects end of array
-    for (let index = 0; index < 1024; index++) {
-      try {
-        const item = await retryWithBackoff(() => readOnlyContract.items(index));
-
-        // Include ALL items (even deleted ones) to preserve indices
-        formattedItems.push({
-          id: index, // Preserve original contract index
-          name: item.name,
-          description: item.description,
-          url: item.url,
-          imageUrl: item.imageUrl,
-          isPurchased: item.isPurchased,
-          isDeleted: item.isDeleted, // Frontend will filter these out
-          purchasedAt: item.purchasedAt ? Number(item.purchasedAt) : null
-        });
-
-        // Add delay to respect rate limits (25 req/sec for Alchemy free tier)
-        // 50ms delay = 20 req/sec, safely under the limit
-        await sleep(50);
-      } catch (error) {
-        // Log full error details for debugging
-        console.log(`Error at index ${index}:`, {
-          message: error.message,
-          code: error.code,
-          reason: error.reason,
-          data: error.data
-        });
-
-        // Check if this is an "end of array" error
-        // Specifically check for "missing revert data" which indicates no item at this index
-        const isEndOfArray =
-          error.message?.includes('missing revert data') ||
-          (error.code === 'CALL_EXCEPTION' && error.data === null && error.reason === null);
-
-        if (isEndOfArray) {
-          // Reached the end of items array
-          console.log(`Reached end of items at index ${index}`);
-          break;
-        }
-
-        // For other errors (like overflow/decoding errors), log and skip this index
-        // This handles corrupted or problematic items gracefully
-        console.warn(`Error loading item at index ${index}:`, error.message);
-
-        // Add a placeholder for this broken item so indices stay stable
-        formattedItems.push({
-          id: index,
-          name: `[Error loading item ${index}]`,
-          description: 'This item could not be loaded',
-          url: '',
-          imageUrl: '',
-          isPurchased: false,
-          isDeleted: true, // Mark as deleted so frontend hides it
-          purchasedAt: null
-        });
-      }
-    }
+    // Format items with their indices preserved
+    const formattedItems = allItems.map((item, index) => ({
+      id: index, // Preserve original contract index
+      name: item.name,
+      description: item.description,
+      url: item.url,
+      imageUrl: item.imageUrl,
+      isPurchased: item.isPurchased,
+      isDeleted: item.isDeleted, // Frontend will filter these out
+      purchasedAt: item.purchasedAt ? Number(item.purchasedAt) : null
+    }));
 
     return {
       statusCode: 200,
@@ -489,4 +447,33 @@ async function handlePurchase(event, headers) {
       })
     };
   }
+}
+
+// Test locally if run directly (not imported as module)
+if (require.main === module) {
+  console.log('Running local test...\n');
+
+  // Mock event for GET /items
+  const testEvent = {
+    requestContext: {
+      http: {
+        method: 'GET',
+        path: '/items'
+      }
+    }
+  };
+
+  exports.handler(testEvent).then(result => {
+    console.log('\n=== RESULT ===');
+    console.log('Status:', result.statusCode);
+    if (result.statusCode === 200) {
+      const data = JSON.parse(result.body);
+      console.log(`\nFound ${data.items.length} items:`);
+      data.items.forEach(item => {
+        console.log(`  [${item.id}] ${item.name} - Deleted: ${item.isDeleted}, Purchased: ${item.isPurchased}`);
+      });
+    } else {
+      console.log('Error:', result.body);
+    }
+  }).catch(console.error);
 }
