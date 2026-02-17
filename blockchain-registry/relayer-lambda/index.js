@@ -49,6 +49,13 @@ function initializeContract() {
 }
 
 /**
+ * Sleep helper for rate limiting
+ */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
  * Encrypt purchaser name using owner's public key (ECIES)
  */
 async function encryptPurchaserName(publicKey, name) {
@@ -250,6 +257,10 @@ async function handleGetItems(headers) {
           isDeleted: item.isDeleted, // Frontend will filter these out
           purchasedAt: item.purchasedAt ? Number(item.purchasedAt) : null
         });
+
+        // Add delay to respect rate limits (25 req/sec for Alchemy free tier)
+        // 50ms delay = 20 req/sec, safely under the limit
+        await sleep(50);
       } catch (error) {
         // Log full error details for debugging
         console.log(`Error at index ${index}:`, {

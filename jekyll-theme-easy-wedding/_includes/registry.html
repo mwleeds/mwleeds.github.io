@@ -220,8 +220,13 @@
     const container = document.getElementById('registry-items');
     container.innerHTML = '';
 
+    // Debug logging
+    console.log('Total items from API:', items.length);
+    console.log('All items:', items);
+
     // Filter out deleted items (but keep the IDs stable for purchases)
     const activeItems = items.filter(item => !item.isDeleted);
+    console.log('Active items (not deleted):', activeItems.length);
 
     activeItems.forEach(item => {
       const col = document.createElement('div');
