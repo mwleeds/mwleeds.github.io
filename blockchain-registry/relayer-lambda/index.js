@@ -253,11 +253,10 @@ async function handleGetItems(headers) {
         });
 
         // Check if this is an "end of array" error
+        // Specifically check for "missing revert data" which indicates no item at this index
         const isEndOfArray =
-          error.message?.includes('Invalid item ID') ||
-          error.message?.includes('out of bounds') ||
-          error.message?.includes('index out of bounds') ||
-          (error.code === 'CALL_EXCEPTION' && !error.message?.includes('overflow'));
+          error.message?.includes('missing revert data') ||
+          (error.code === 'CALL_EXCEPTION' && error.data === null && error.reason === null);
 
         if (isEndOfArray) {
           // Reached the end of items array
