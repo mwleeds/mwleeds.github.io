@@ -224,13 +224,20 @@ async function handleGetItems(headers) {
   try {
     initializeContract();
 
+    // Create a read-only contract instance (no signer needed for view functions)
+    const readOnlyContract = new ethers.Contract(
+      process.env.CONTRACT_ADDRESS,
+      CONTRACT_ABI,
+      provider // Use provider directly, not wallet
+    );
+
     const formattedItems = [];
 
     // Iterate through potential item indices
     // We'll try up to 1024 items as a safety limit; code breaks early when it detects end of array
     for (let index = 0; index < 1024; index++) {
       try {
-        const item = await contract.items(index);
+        const item = await readOnlyContract.items(index);
 
         // Include ALL items (even deleted ones) to preserve indices
         formattedItems.push({
