@@ -56,6 +56,34 @@ function sleep(ms) {
 }
 
 /**
+ * Retry a function with exponential backoff
+ */
+async function retryWithBackoff(fn, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const isRateLimit =
+        error.code === 'CALL_EXCEPTION' ||
+        error.message?.includes('rate limit') ||
+        error.message?.includes('429');
+
+      const isLastAttempt = attempt === maxRetries - 1;
+
+      if (isRateLimit && !isLastAttempt) {
+        const delayMs = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+        console.log(`Rate limit hit, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await sleep(delayMs);
+        continue;
+      }
+
+      // If not a rate limit error, or last attempt, throw
+      throw error;
+    }
+  }
+}
+
+/**
  * Encrypt purchaser name using owner's public key (ECIES)
  */
 async function encryptPurchaserName(publicKey, name) {
@@ -244,7 +272,7 @@ async function handleGetItems(headers) {
     // We'll try up to 1024 items as a safety limit; code breaks early when it detects end of array
     for (let index = 0; index < 1024; index++) {
       try {
-        const item = await readOnlyContract.items(index);
+        const item = await retryWithBackoff(() => readOnlyContract.items(index));
 
         // Include ALL items (even deleted ones) to preserve indices
         formattedItems.push({
