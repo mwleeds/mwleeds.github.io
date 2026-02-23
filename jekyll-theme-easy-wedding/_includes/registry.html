@@ -232,6 +232,19 @@
       const col = document.createElement('div');
       col.className = 'col-md-4 col-sm-6 registry-item';
 
+      // Check if this is a cash donation item (can't be marked as purchased)
+      const isCashDonation = item.name.includes('Cash Donation');
+
+      // Build purchase button HTML
+      let purchaseButton = '';
+      if (!item.isPurchased) {
+        if (isCashDonation) {
+          purchaseButton = '<button class="btn btn-primary btn-block" disabled style="opacity: 0.5; cursor: not-allowed;">Mark as Purchased</button>';
+        } else {
+          purchaseButton = `<button class="btn btn-primary btn-block" onclick="openPurchaseModal(${item.id}, '${item.name.replace(/'/g, "\\'")}', '${item.description.replace(/'/g, "\\'")}')">Mark as Purchased</button>`;
+        }
+      }
+
       col.innerHTML = `
         <div class="registry-item-card ${item.isPurchased ? 'purchased' : ''}">
           ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.name}" class="registry-item-image" onerror="this.style.display='none'">` : ''}
@@ -241,12 +254,8 @@
             <span class="status-badge ${item.isPurchased ? 'status-purchased' : 'status-available'}">
               ${item.isPurchased ? '✓ Purchased' : '○ Available'}
             </span>
-            ${!item.isPurchased ? `
-              <button class="btn btn-primary btn-block" onclick="openPurchaseModal(${item.id}, '${item.name.replace(/'/g, "\\'")}', '${item.description.replace(/'/g, "\\'")}')">
-                Mark as Purchased
-              </button>
-              ${item.url ? `<a href="${item.url}" target="_blank" class="btn btn-default btn-block">View Product</a>` : ''}
-            ` : ''}
+            ${purchaseButton}
+            ${!item.isPurchased && item.url ? `<a href="${item.url}" target="_blank" class="btn btn-default btn-block">View Product</a>` : ''}
           </div>
         </div>
       `;
