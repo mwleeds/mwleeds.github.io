@@ -59,32 +59,41 @@ function sleep(ms) {
 }
 
 /**
- * Retry a function with exponential backoff
+ * Retry a function with exponential backoff on transient errors.
+ * Retries rate-limit and network/timeout errors; real contract reverts
+ * (CALL_EXCEPTION with revert data) are thrown immediately.
  */
-async function retryWithBackoff(fn, maxRetries = 3) {
+async function retryWithBackoff(fn, maxRetries = 5) {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
-      // Only retry on explicit rate limit errors, not all CALL_EXCEPTIONs
-      const isRateLimit =
-        error.message?.includes('rate limit') ||
-        error.message?.includes('429') ||
-        error.code === -32016; // RPC rate limit code
-
-      const isLastAttempt = attempt === maxRetries - 1;
-
-      if (isRateLimit && !isLastAttempt) {
-        const delayMs = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
-        console.log(`Rate limit hit, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`);
-        await sleep(delayMs);
-        continue;
+      if (isContractRevert(error) || attempt === maxRetries - 1) {
+        throw error;
       }
 
-      // If not a rate limit error, or last attempt, throw
-      throw error;
+      const delayMs = Math.pow(2, attempt) * 500; // 0.5s, 1s, 2s, 4s, 8s
+      console.log(`Transient RPC error (${error.code || error.message?.slice(0, 80)}), retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+      await sleep(delayMs);
     }
   }
+}
+
+/**
+ * Detect a contract revert (the call ran on-chain and reverted) vs. an
+ * RPC/network failure (the call never completed). Only the former is a
+ * terminal signal for loops that probe for array bounds.
+ */
+function isContractRevert(error) {
+  if (error?.code !== 'CALL_EXCEPTION') return false;
+  // Revert with payload: require/revert reason or custom error data.
+  if (error.data || error.reason || error.revert) return true;
+  // Empty revert: Solidity panic (e.g. array out-of-bounds) reverts with no
+  // data; ethers v6 surfaces it as shortMessage "missing revert data", and
+  // the underlying JSON-RPC response uses code 3 ("execution reverted").
+  if (error.shortMessage === 'missing revert data') return true;
+  if (error.info?.error?.code === 3) return true;
+  return false;
 }
 
 /**
@@ -258,6 +267,11 @@ exports.handler = async (event) => {
  * Handle GET /items - Fetch all registry items
  * Returns ALL items including deleted ones with original contract indices preserved
  * Frontend filters out deleted items for display
+ *
+ * Note: the contract's getAllItems() filters deleted items and reindexes the
+ * resulting array, so its indices don't match the on-chain storage indices
+ * that markAsPurchased() expects. We iterate the raw items(i) getter instead
+ * so each returned id matches the index required for a purchase.
  */
 async function handleGetItems(headers) {
   try {
@@ -270,13 +284,32 @@ async function handleGetItems(headers) {
       provider // Use provider directly, not wallet
     );
 
-    console.log('Fetching all items using getAllItems()');
-    const allItems = await readOnlyContract.getAllItems();
-    console.log(`Retrieved ${allItems.length} items from contract`);
+    // Walk the items array by true storage index until we run off the end.
+    // items(i) reverts (Panic 0x32 / array out-of-bounds) once i >= items.length.
+    // Transient RPC errors are retried inside retryWithBackoff; only a real
+    // contract revert terminates the loop so we don't truncate on RPC hiccups.
+    console.log('Fetching all items by storage index');
+    const allItems = [];
+    const MAX_ITEMS = 1000; // Safety bound
+    for (let i = 0; i < MAX_ITEMS; i++) {
+      try {
+        const item = await retryWithBackoff(() => readOnlyContract.items(i));
+        allItems.push(item);
+      } catch (e) {
+        if (isContractRevert(e)) {
+          break; // Reached end of items array
+        }
+        // Persistent RPC failure after retries — surface it instead of
+        // silently returning a truncated list.
+        console.error(`Failed to fetch item at index ${i} after retries:`, e);
+        throw e;
+      }
+    }
+    console.log(`Retrieved ${allItems.length} items from contract (including deleted)`);
 
-    // Format items with their indices preserved
+    // Format items with their true contract storage indices
     const formattedItems = allItems.map((item, index) => ({
-      id: index, // Preserve original contract index
+      id: index, // True contract storage index - matches items(itemId) in purchase flow
       name: item.name,
       description: item.description,
       url: item.url,
@@ -360,7 +393,7 @@ async function handlePurchase(event, headers) {
     // Check if item exists and is not already purchased
     // Use contract.items() instead of getItem() - it's the auto-generated public state variable getter
     // and ethers.js handles it more reliably than the custom getItem() function
-    const item = await contract.items(itemId);
+    const item = await retryWithBackoff(() => contract.items(itemId));
 
     console.log(`Item ${itemId} raw data:`, {
       name: item.name,
@@ -390,8 +423,8 @@ async function handlePurchase(event, headers) {
 
     console.log(`Marking item ${itemId} as purchased by ${purchaserName}`);
 
-    // Submit transaction
-    const tx = await contract.markAsPurchased(itemId, encryptedName);
+    // Submit transaction (retry on transient RPC rate-limit / BAD_DATA)
+    const tx = await retryWithBackoff(() => contract.markAsPurchased(itemId, encryptedName));
     console.log('Transaction submitted:', tx.hash);
 
     // Wait for confirmation

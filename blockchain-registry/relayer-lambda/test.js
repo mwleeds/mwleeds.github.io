@@ -80,9 +80,16 @@ async function runTests() {
     const body = JSON.parse(response.body);
     console.log('Items count:', body.count);
     if (body.items && body.items.length > 0) {
-      console.log('First item:', body.items[0].name);
+      console.log('\nAll items:');
+      for (const item of body.items) {
+        const flags = [
+          item.isDeleted ? 'DELETED' : null,
+          item.isPurchased ? 'PURCHASED' : 'available',
+        ].filter(Boolean).join(' / ');
+        console.log(`  [${item.id}] ${item.name} — ${flags}`);
+      }
     }
-    console.log(response.statusCode === 200 ? '✅ PASS\n' : '❌ FAIL\n');
+    console.log(response.statusCode === 200 ? '\n✅ PASS\n' : '\n❌ FAIL\n');
   } catch (error) {
     console.error('❌ FAIL:', error.message, '\n');
   }
